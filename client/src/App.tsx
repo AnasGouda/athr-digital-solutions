@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import { AboutPage, BlogDetailPage, BlogPage, CaseStudiesPage, CaseStudyDetailPage, ContactPage, FAQPage, LegalPage, PricingPage, ProductDetailPage, ProductsPage, ProjectRequestPage, ServiceDetailPage, ServicesPage, SolutionsPage } from "./pages/PublicPages";
 import { AdminContentResourcePage, AdminDataPage, AdminOverviewPage, AdminRequestsPage, AdminResourcePage, AuthLandingPage, PortalListPage, PortalPage, PortalProfilePage, PortalProjectsPage } from "./pages/Workspaces";
 import NotFound from "./pages/NotFound";
+import AdminFinancePage from "./pages/AdminFinancePage";
 
 function Router() {
   return <Switch>
@@ -49,14 +50,18 @@ function Router() {
     <Route path="/admin/projects"><AdminDataPage section="projects" /></Route>
     <Route path="/admin/tasks"><AdminResourcePage section="tasks" /></Route>
     <Route path="/admin/customers"><AdminDataPage section="customers" /></Route>
+    <Route path="/admin/leads"><AdminRequestsPage /></Route>
     <Route path="/admin/content"><AdminDataPage section="content" /></Route>
     <Route path="/admin/services"><AdminContentResourcePage section="services" /></Route>
     <Route path="/admin/products"><AdminContentResourcePage section="products" /></Route>
     <Route path="/admin/case-studies"><AdminContentResourcePage section="case-studies" /></Route>
     <Route path="/admin/invoices"><AdminResourcePage section="invoices" /></Route>
     <Route path="/admin/payments"><AdminResourcePage section="payments" /></Route>
+    <Route path="/admin/income"><AdminResourcePage section="payments" /></Route>
     <Route path="/admin/expenses"><AdminResourcePage section="expenses" /></Route>
-    <Route path="/admin/finance"><AdminOverviewPage /></Route>
+    <Route path="/admin/finance" component={AdminFinancePage} />
+    <Route path="/admin/salaries"><AdminResourcePage section="team" /></Route>
+    <Route path="/admin/suppliers"><AdminResourcePage section="settings" /></Route>
     <Route path="/admin/support"><AdminResourcePage section="support" /></Route>
     <Route path="/admin/messages"><AdminResourcePage section="messages" /></Route>
     <Route path="/admin/notifications"><AdminResourcePage section="notifications" /></Route>
@@ -65,6 +70,8 @@ function Router() {
     <Route path="/admin/faq"><AdminContentResourcePage section="faq" /></Route>
     <Route path="/admin/team"><AdminResourcePage section="team" /></Route>
     <Route path="/admin/analytics"><AdminResourcePage section="analytics" /></Route>
+    <Route path="/admin/reports"><AdminResourcePage section="analytics" /></Route>
+    <Route path="/admin/files"><AdminResourcePage section="settings" /></Route>
     <Route path="/admin/audit-logs"><AdminResourcePage section="audit-logs" /></Route>
     <Route path="/admin/settings"><AdminResourcePage section="settings" /></Route>
     <Route path="/404" component={NotFound} />

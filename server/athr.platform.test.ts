@@ -33,6 +33,11 @@ describe("ATHR platform authorization", () => {
     await expect(caller.admin.overview()).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
+  it("rejects customer access to admin resource feeds", async () => {
+    const caller = appRouter.createCaller(context(customer));
+    await expect(caller.admin.resources()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
   it("rejects unauthenticated access to the customer portal", async () => {
     const caller = appRouter.createCaller(context());
     await expect(caller.portal.overview()).rejects.toMatchObject({ code: "UNAUTHORIZED" });

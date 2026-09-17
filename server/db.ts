@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, ne, sum } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, ne, sum } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -175,20 +175,28 @@ export async function getCustomerPortal(userId: number) {
 
 export async function getAdminOverview() {
   const db = await getDb();
-  if (!db) return { customers: 0, activeProjects: 0, completedProjects: 0, openTickets: 0, pendingRequests: 0, outstandingInvoices: "0", revenue: "0", expenses: "0", profit: "0" };
-  const [[customerCount], [activeProjectCount], [completedProjectCount], [ticketCount], [requestCount], [revenue], [expenseTotal], [outstanding]] = await Promise.all([
+  if (!db) return { customers: 0, newCustomers: 0, activeProjects: 0, completedProjects: 0, pendingProjects: 0, overdueProjects: 0, openTickets: 0, pendingRequests: 0, teamMembers: 0, paidInvoices: 0, unpaidInvoices: 0, outstandingInvoices: "0", revenue: "0", expenses: "0", profit: "0", cashFlow: "0" };
+  const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+  const [[customerCount], [newCustomerCount], [activeProjectCount], [completedProjectCount], [pendingProjectCount], [overdueProjectCount], [ticketCount], [requestCount], [teamCount], [paidInvoiceCount], [unpaidInvoiceCount], [revenue], [expenseTotal], [invoiceTotals]] = await Promise.all([
     db.select({ value: count() }).from(users).where(eq(users.accessRole, "CUSTOMER")),
+    db.select({ value: count() }).from(users).where(and(eq(users.accessRole, "CUSTOMER"), gte(users.createdAt, monthStart))),
     db.select({ value: count() }).from(projects).where(eq(projects.status, "IN_PROGRESS")),
     db.select({ value: count() }).from(projects).where(eq(projects.status, "COMPLETED")),
+    db.select({ value: count() }).from(projects).where(eq(projects.status, "PENDING")),
+    db.select({ value: count() }).from(projects).where(and(gte(projects.deadline, new Date(0)), eq(projects.status, "IN_PROGRESS"))),
     db.select({ value: count() }).from(supportTickets).where(eq(supportTickets.status, "OPEN")),
     db.select({ value: count() }).from(projectRequests).where(eq(projectRequests.status, "NEW")),
+    db.select({ value: count() }).from(users).where(ne(users.accessRole, "CUSTOMER")),
+    db.select({ value: count() }).from(invoices).where(eq(invoices.status, "PAID")),
+    db.select({ value: count() }).from(invoices).where(ne(invoices.status, "PAID")),
     db.select({ value: sum(payments.amount) }).from(payments).where(eq(payments.status, "PAID")),
     db.select({ value: sum(expenses.amount) }).from(expenses),
-    db.select({ value: sum(invoices.total) }).from(invoices).where(eq(invoices.status, "OVERDUE")),
+    db.select({ total: sum(invoices.total), paid: sum(invoices.paid) }).from(invoices).where(ne(invoices.status, "PAID")),
   ]);
   const revenueValue = Number(revenue?.value ?? 0);
   const expenseValue = Number(expenseTotal?.value ?? 0);
-  return { customers: Number(customerCount?.value ?? 0), activeProjects: Number(activeProjectCount?.value ?? 0), completedProjects: Number(completedProjectCount?.value ?? 0), openTickets: Number(ticketCount?.value ?? 0), pendingRequests: Number(requestCount?.value ?? 0), outstandingInvoices: String(outstanding?.value ?? 0), revenue: String(revenue?.value ?? 0), expenses: String(expenseTotal?.value ?? 0), profit: String(revenueValue - expenseValue) };
+  const outstandingValue = Number(invoiceTotals?.total ?? 0) - Number(invoiceTotals?.paid ?? 0);
+  return { customers: Number(customerCount?.value ?? 0), newCustomers: Number(newCustomerCount?.value ?? 0), activeProjects: Number(activeProjectCount?.value ?? 0), completedProjects: Number(completedProjectCount?.value ?? 0), pendingProjects: Number(pendingProjectCount?.value ?? 0), overdueProjects: Number(overdueProjectCount?.value ?? 0), openTickets: Number(ticketCount?.value ?? 0), pendingRequests: Number(requestCount?.value ?? 0), teamMembers: Number(teamCount?.value ?? 0), paidInvoices: Number(paidInvoiceCount?.value ?? 0), unpaidInvoices: Number(unpaidInvoiceCount?.value ?? 0), outstandingInvoices: String(outstandingValue), revenue: String(revenue?.value ?? 0), expenses: String(expenseTotal?.value ?? 0), profit: String(revenueValue - expenseValue), cashFlow: String(revenueValue - expenseValue) };
 }
 
 export async function getAdminRequests() {

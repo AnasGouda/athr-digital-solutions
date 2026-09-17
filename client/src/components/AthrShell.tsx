@@ -4,6 +4,7 @@ import { ArrowUpLeft, Globe2, Menu, X, LogIn, Sparkles, Linkedin, Mail } from "l
 import { startLogin } from "@/const";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { AthrChatbot } from "@/components/AthrChatbot";
+import { AthrIntro } from "@/components/AthrIntro";
 
 const nav = [
   ["/", "الرئيسية", "Home"],
@@ -33,7 +34,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => { const handler = () => setScrolled(window.scrollY > 20); window.addEventListener("scroll", handler); return () => window.removeEventListener("scroll", handler); }, []);
   useEffect(() => setMenuOpen(false), [location]);
-  return <div className="min-h-screen overflow-x-clip bg-[#0a0907] text-[#f7f2e9]">
+  return <div className="min-h-screen overflow-x-clip bg-[#0a0907] text-[#f7f2e9]"><AthrIntro />
     <header className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${scrolled ? "border-b border-white/8 bg-[#0d0c0a]/84 shadow-2xl shadow-black/20 backdrop-blur-xl" : "bg-transparent"}`}>
       <div className="mx-auto flex h-[76px] max-w-[1440px] items-center justify-between px-5 sm:px-8 lg:px-12">
         <AthrLogo />
