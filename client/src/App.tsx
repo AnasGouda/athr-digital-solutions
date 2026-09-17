@@ -9,6 +9,7 @@ import { AboutPage, BlogDetailPage, BlogPage, CaseStudiesPage, CaseStudyDetailPa
 import { AdminContentResourcePage, AdminDataPage, AdminOverviewPage, AdminRequestsPage, AdminResourcePage, AuthLandingPage, PortalListPage, PortalPage, PortalProfilePage, PortalProjectsPage } from "./pages/Workspaces";
 import NotFound from "./pages/NotFound";
 import AdminFinancePage from "./pages/AdminFinancePage";
+import { AdminBlogCrudPage, AdminCustomersCrudPage, AdminProjectsCrudPage, AdminReportsPage } from "./pages/AdminManagementPages";
 
 function Router() {
   return <Switch>
@@ -47,9 +48,9 @@ function Router() {
     <Route path="/portal/settings"><PortalProfilePage settings /></Route>
     <Route path="/admin" component={AdminOverviewPage} />
     <Route path="/admin/requests" component={AdminRequestsPage} />
-    <Route path="/admin/projects"><AdminDataPage section="projects" /></Route>
+    <Route path="/admin/projects" component={AdminProjectsCrudPage} />
     <Route path="/admin/tasks"><AdminResourcePage section="tasks" /></Route>
-    <Route path="/admin/customers"><AdminDataPage section="customers" /></Route>
+    <Route path="/admin/customers" component={AdminCustomersCrudPage} />
     <Route path="/admin/leads"><AdminRequestsPage /></Route>
     <Route path="/admin/content"><AdminDataPage section="content" /></Route>
     <Route path="/admin/services"><AdminContentResourcePage section="services" /></Route>
@@ -65,12 +66,12 @@ function Router() {
     <Route path="/admin/support"><AdminResourcePage section="support" /></Route>
     <Route path="/admin/messages"><AdminResourcePage section="messages" /></Route>
     <Route path="/admin/notifications"><AdminResourcePage section="notifications" /></Route>
-    <Route path="/admin/blog"><AdminContentResourcePage section="blog" /></Route>
+    <Route path="/admin/blog" component={AdminBlogCrudPage} />
     <Route path="/admin/testimonials"><AdminContentResourcePage section="testimonials" /></Route>
     <Route path="/admin/faq"><AdminContentResourcePage section="faq" /></Route>
     <Route path="/admin/team"><AdminResourcePage section="team" /></Route>
     <Route path="/admin/analytics"><AdminResourcePage section="analytics" /></Route>
-    <Route path="/admin/reports"><AdminResourcePage section="analytics" /></Route>
+    <Route path="/admin/reports" component={AdminReportsPage} />
     <Route path="/admin/files"><AdminResourcePage section="settings" /></Route>
     <Route path="/admin/audit-logs"><AdminResourcePage section="audit-logs" /></Route>
     <Route path="/admin/settings"><AdminResourcePage section="settings" /></Route>

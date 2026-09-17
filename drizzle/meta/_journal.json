@@ -15,6 +15,13 @@
       "when": 1789670370071,
       "tag": "0001_sweet_doomsday",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1789687843760,
+      "tag": "0002_neat_vengeance",
+      "breakpoints": true
     }
   ]
 }

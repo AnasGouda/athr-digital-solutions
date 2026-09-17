@@ -204,6 +204,7 @@ export const payments = mysqlTable("payments", {
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
   method: varchar("method", { length: 60 }).notNull(),
   transactionId: varchar("transactionId", { length: 180 }),
+  receipt: text("receipt"),
   status: mysqlEnum("status", ["PENDING", "PAID", "FAILED", "REFUNDED"]).default("PENDING").notNull(),
   paidAt: timestamp("paidAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

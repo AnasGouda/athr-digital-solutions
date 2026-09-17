@@ -26,6 +26,7 @@ const customer = {
   updatedAt: new Date(),
   lastSignedIn: new Date(),
 };
+const admin = { ...customer, id: 1, role: "admin" as const, accessRole: "ADMIN" as const };
 
 describe("ATHR platform authorization", () => {
   it("rejects customer access to admin metrics on the backend", async () => {
@@ -36,6 +37,11 @@ describe("ATHR platform authorization", () => {
   it("rejects customer access to admin resource feeds", async () => {
     const caller = appRouter.createCaller(context(customer));
     await expect(caller.admin.resources()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("rejects customer access to financial reports", async () => {
+    const caller = appRouter.createCaller(context(customer));
+    await expect(caller.admin.financialReport()).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("rejects unauthenticated access to the customer portal", async () => {
@@ -58,5 +64,10 @@ describe("ATHR platform authorization", () => {
   it("rejects empty chatbot turns before invoking the model", async () => {
     const caller = appRouter.createCaller(context());
     await expect(caller.ai.chat({ messages: [{ role: "user", content: "" }] })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("validates receipt file types before storage access", async () => {
+    const caller = appRouter.createCaller(context(admin));
+    await expect(caller.admin.uploadReceipt({ entity: "expense", id: 1, fileName: "receipt.pdf", mimeType: "application/pdf", data: "too-short" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 });

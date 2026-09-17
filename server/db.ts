@@ -1,4 +1,5 @@
 import { and, count, desc, eq, gte, inArray, ne, sum } from "drizzle-orm";
+import { storagePut } from "./storage";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -254,6 +255,78 @@ export async function addTicketMessage(input: typeof ticketMessages.$inferInsert
   if (!db) throw new Error("Database unavailable");
   const result = await db.insert(ticketMessages).values(input);
   return { id: Number(result[0].insertId) };
+}
+
+export async function getFinancialReportData() {
+  const db = await getDb();
+  if (!db) return { payments: [], expenses: [], invoices: [], monthly: [] };
+  const [paymentRows, expenseRows, invoiceRows] = await Promise.all([
+    db.select().from(payments).where(eq(payments.status, "PAID")).orderBy(desc(payments.createdAt)).limit(500),
+    db.select().from(expenses).orderBy(desc(expenses.spentAt)).limit(500),
+    db.select().from(invoices).orderBy(desc(invoices.createdAt)).limit(500),
+  ]);
+  const monthMap = new Map<string, { month: string; income: number; expenses: number; profit: number }>();
+  for (const row of paymentRows) { const month = new Date(row.paidAt ?? row.createdAt).toISOString().slice(0, 7); const item = monthMap.get(month) ?? { month, income: 0, expenses: 0, profit: 0 }; item.income += Number(row.amount); item.profit = item.income - item.expenses; monthMap.set(month, item); }
+  for (const row of expenseRows) { const month = new Date(row.spentAt).toISOString().slice(0, 7); const item = monthMap.get(month) ?? { month, income: 0, expenses: 0, profit: 0 }; item.expenses += Number(row.amount); item.profit = item.income - item.expenses; monthMap.set(month, item); }
+  return { payments: paymentRows, expenses: expenseRows, invoices: invoiceRows, monthly: Array.from(monthMap.values()).sort((a, b) => a.month.localeCompare(b.month)) };
+}
+
+export async function createAdminProject(input: typeof projects.$inferInsert, actorId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const result = await db.insert(projects).values(input); const id = Number(result[0].insertId);
+  await recordAuditLog({ userId: actorId, action: "CREATE", entity: "project", entityId: id, metadata: { name: input.name } }); return { id };
+}
+
+export async function updateAdminProject(id: number, input: Partial<typeof projects.$inferInsert>, actorId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable"); await db.update(projects).set(input).where(eq(projects.id, id));
+  await recordAuditLog({ userId: actorId, action: "UPDATE", entity: "project", entityId: id, metadata: input }); return { success: true };
+}
+
+export async function archiveCustomer(id: number, actorId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable"); await db.update(users).set({ status: "SUSPENDED" }).where(eq(users.id, id));
+  await recordAuditLog({ userId: actorId, action: "ARCHIVE", entity: "customer", entityId: id }); return { success: true };
+}
+
+export async function updateCustomer(id: number, input: Pick<typeof users.$inferInsert, "name" | "email" | "phone" | "company" | "status">, actorId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable"); await db.update(users).set(input).where(and(eq(users.id, id), eq(users.accessRole, "CUSTOMER")));
+  await recordAuditLog({ userId: actorId, action: "UPDATE", entity: "customer", entityId: id, metadata: input }); return { success: true };
+}
+
+export async function createCustomer(input: { name: string; email: string; phone?: string | null; company?: string | null }, actorId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const result = await db.insert(users).values({ openId: `admin-created-${crypto.randomUUID()}`, name: input.name, email: input.email, phone: input.phone ?? null, company: input.company ?? null, role: "user", accessRole: "CUSTOMER", status: "ACTIVE" });
+  const id = Number(result[0].insertId); await recordAuditLog({ userId: actorId, action: "CREATE", entity: "customer", entityId: id, metadata: { email: input.email } }); return { id };
+}
+
+export async function createBlogPost(input: typeof blogPosts.$inferInsert, actorId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable"); const result = await db.insert(blogPosts).values(input); const id = Number(result[0].insertId);
+  await recordAuditLog({ userId: actorId, action: "CREATE", entity: "blog_post", entityId: id, metadata: { slug: input.slug } }); return { id };
+}
+
+export async function updateBlogPost(id: number, input: Partial<typeof blogPosts.$inferInsert>, actorId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable"); await db.update(blogPosts).set(input).where(eq(blogPosts.id, id));
+  await recordAuditLog({ userId: actorId, action: "UPDATE", entity: "blog_post", entityId: id, metadata: input }); return { success: true };
+}
+
+export async function deleteBlogPost(id: number, actorId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable"); await db.delete(blogPosts).where(eq(blogPosts.id, id));
+  await recordAuditLog({ userId: actorId, action: "DELETE", entity: "blog_post", entityId: id }); return { success: true };
+}
+
+export async function uploadReceipt(input: { entity: "payment" | "expense"; id: number; fileName: string; mimeType: string; data: string; actorId: number }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const cleanName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120);
+  const buffer = Buffer.from(input.data.replace(/^data:[^;]+;base64,/, ""), "base64");
+  const uploaded = await storagePut(`receipts/${input.entity}/${input.id}-${cleanName}`, buffer, input.mimeType);
+  if (input.entity === "payment") await db.update(payments).set({ receipt: uploaded.url }).where(eq(payments.id, input.id));
+  else await db.update(expenses).set({ receipt: uploaded.url }).where(eq(expenses.id, input.id));
+  await recordAuditLog({ userId: input.actorId, action: "ATTACH_RECEIPT", entity: input.entity, entityId: input.id, metadata: { fileName: cleanName, mimeType: input.mimeType, url: uploaded.url, size: buffer.length } });
+  return uploaded;
+}
+
+export async function recordAuditLog(input: typeof auditLogs.$inferInsert) {
+  const db = await getDb(); if (!db) return { id: 0 };
+  const result = await db.insert(auditLogs).values(input); return { id: Number(result[0].insertId) };
 }
 
 async function seedPublicContent() {

@@ -7,6 +7,10 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import {
   addTicketMessage,
+  archiveCustomer,
+  createAdminProject,
+  createCustomer,
+  createBlogPost,
   createContactMessage,
   createProjectRequest,
   createSupportTicket,
@@ -15,6 +19,7 @@ import {
   getAdminProjects,
   getAdminResourceData,
   getAdminRequests,
+  getFinancialReportData,
   getCustomerPortal,
   getPublicBlog,
   getPublicCaseStudy,
@@ -22,6 +27,11 @@ import {
   getPublicProduct,
   getPublicService,
   updateProjectRequestStatus,
+  updateAdminProject,
+  updateBlogPost,
+  updateCustomer,
+  deleteBlogPost,
+  uploadReceipt,
 } from "./db";
 
 const requestSchema = z.object({
@@ -56,6 +66,13 @@ const ticketSchema = z.object({
 const chatSchema = z.object({
   messages: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().min(1).max(6000) })).max(24),
 });
+
+const projectAdminSchema = z.object({
+  customerId: z.number().int().positive(), serviceId: z.number().int().positive().nullable().optional(), name: z.string().min(2).max(220), description: z.string().min(2).max(10000), status: z.enum(["PENDING", "PLANNING", "IN_PROGRESS", "REVIEW", "COMPLETED", "CANCELLED"]).default("PENDING"), progress: z.number().int().min(0).max(100).default(0), budget: z.string().default("0"), paidAmount: z.string().default("0"), startDate: z.string().datetime().nullable().optional(), deadline: z.string().datetime().nullable().optional(),
+});
+const customerAdminSchema = z.object({ id: z.number().int().positive(), name: z.string().min(2).max(160).nullable(), email: z.string().email().nullable(), phone: z.string().max(32).nullable(), company: z.string().max(160).nullable(), status: z.enum(["ACTIVE", "SUSPENDED"]) });
+const blogAdminSchema = z.object({ slug: z.string().min(2).max(160), titleAr: z.string().min(2).max(240), titleEn: z.string().min(2).max(240), excerptAr: z.string().min(2), excerptEn: z.string().min(2), contentAr: z.string().min(2), contentEn: z.string().min(2), author: z.string().min(2).max(140), category: z.string().min(2).max(80), tags: z.array(z.string()).default([]), status: z.enum(["DRAFT", "PUBLISHED"]).default("DRAFT"), publishedAt: z.string().datetime().optional(), seoTitle: z.string().max(240).nullable().optional(), seoDescription: z.string().nullable().optional(), coverImage: z.string().url().nullable().optional() });
+const receiptSchema = z.object({ entity: z.enum(["payment", "expense"]), id: z.number().int().positive(), fileName: z.string().min(1).max(180), mimeType: z.enum(["application/pdf", "image/jpeg", "image/png", "image/webp"]), data: z.string().min(20).max(15_000_000) });
 
 const adminOnly = protectedProcedure.use(({ ctx, next }) => {
   const isAdmin = ctx.user.role === "admin" || ["SUPER_ADMIN", "ADMIN", "MANAGER", "EDITOR", "FINANCE", "SUPPORT"].includes(ctx.user.accessRole);
@@ -136,6 +153,16 @@ export const appRouter = router({
     projects: adminOnly.query(() => getAdminProjects()),
     resources: adminOnly.query(() => getAdminResourceData()),
     content: adminOnly.query(() => getPublicContent()),
+    financialReport: adminOnly.query(() => getFinancialReportData()),
+    createProject: adminOnly.input(projectAdminSchema).mutation(({ ctx, input }) => createAdminProject({ ...input, startDate: input.startDate ? new Date(input.startDate) : null, deadline: input.deadline ? new Date(input.deadline) : null }, ctx.user.id)),
+    updateProject: adminOnly.input(z.object({ id: z.number().int().positive(), values: projectAdminSchema.partial() })).mutation(({ ctx, input }) => updateAdminProject(input.id, { ...input.values, startDate: input.values.startDate === undefined ? undefined : input.values.startDate ? new Date(input.values.startDate) : null, deadline: input.values.deadline === undefined ? undefined : input.values.deadline ? new Date(input.values.deadline) : null }, ctx.user.id)),
+    updateCustomer: adminOnly.input(customerAdminSchema).mutation(({ ctx, input }) => updateCustomer(input.id, input, ctx.user.id)),
+    createCustomer: adminOnly.input(z.object({ name: z.string().min(2).max(160), email: z.string().email(), phone: z.string().max(32).optional(), company: z.string().max(160).optional() })).mutation(({ ctx, input }) => createCustomer(input, ctx.user.id)),
+    archiveCustomer: adminOnly.input(z.object({ id: z.number().int().positive() })).mutation(({ ctx, input }) => archiveCustomer(input.id, ctx.user.id)),
+    createBlogPost: adminOnly.input(blogAdminSchema).mutation(({ ctx, input }) => createBlogPost({ ...input, publishedAt: input.publishedAt ? new Date(input.publishedAt) : new Date() }, ctx.user.id)),
+    updateBlogPost: adminOnly.input(z.object({ id: z.number().int().positive(), values: blogAdminSchema.partial() })).mutation(({ ctx, input }) => updateBlogPost(input.id, { ...input.values, publishedAt: input.values.publishedAt === undefined ? undefined : new Date(input.values.publishedAt) }, ctx.user.id)),
+    deleteBlogPost: adminOnly.input(z.object({ id: z.number().int().positive() })).mutation(({ ctx, input }) => deleteBlogPost(input.id, ctx.user.id)),
+    uploadReceipt: adminOnly.input(receiptSchema).mutation(({ ctx, input }) => uploadReceipt({ ...input, actorId: ctx.user.id })),
     updateRequestStatus: adminOnly.input(z.object({ id: z.number().int().positive(), status: z.enum(["NEW", "REVIEWING", "IN_PROGRESS", "COMPLETED", "ARCHIVED"]) })).mutation(({ input }) => updateProjectRequestStatus(input.id, input.status)),
   }),
 });
