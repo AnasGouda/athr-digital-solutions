@@ -6,7 +6,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import Home from "./pages/Home";
 import { AboutPage, BlogDetailPage, BlogPage, CaseStudiesPage, CaseStudyDetailPage, ContactPage, FAQPage, LegalPage, PricingPage, ProductDetailPage, ProductsPage, ProjectRequestPage, ServiceDetailPage, ServicesPage, SolutionsPage } from "./pages/PublicPages";
-import { AdminDataPage, AdminOverviewPage, AdminRequestsPage, AuthLandingPage, PortalListPage, PortalPage, PortalProjectsPage } from "./pages/Workspaces";
+import { AdminContentResourcePage, AdminDataPage, AdminOverviewPage, AdminRequestsPage, AdminResourcePage, AuthLandingPage, PortalListPage, PortalPage, PortalProfilePage, PortalProjectsPage } from "./pages/Workspaces";
 import NotFound from "./pages/NotFound";
 
 function Router() {
@@ -42,31 +42,31 @@ function Router() {
     <Route path="/portal/support"><PortalListPage section="support" /></Route>
     <Route path="/portal/messages"><PortalListPage section="messages" /></Route>
     <Route path="/portal/notifications"><PortalListPage section="notifications" /></Route>
-    <Route path="/portal/profile"><PortalListPage section="messages" /></Route>
-    <Route path="/portal/settings"><PortalListPage section="notifications" /></Route>
+    <Route path="/portal/profile"><PortalProfilePage /></Route>
+    <Route path="/portal/settings"><PortalProfilePage settings /></Route>
     <Route path="/admin" component={AdminOverviewPage} />
     <Route path="/admin/requests" component={AdminRequestsPage} />
     <Route path="/admin/projects"><AdminDataPage section="projects" /></Route>
-    <Route path="/admin/tasks"><AdminDataPage section="projects" /></Route>
+    <Route path="/admin/tasks"><AdminResourcePage section="tasks" /></Route>
     <Route path="/admin/customers"><AdminDataPage section="customers" /></Route>
     <Route path="/admin/content"><AdminDataPage section="content" /></Route>
-    <Route path="/admin/services"><AdminDataPage section="content" /></Route>
-    <Route path="/admin/products"><AdminDataPage section="content" /></Route>
-    <Route path="/admin/case-studies"><AdminDataPage section="content" /></Route>
-    <Route path="/admin/invoices"><AdminDataPage section="content" /></Route>
-    <Route path="/admin/payments"><AdminOverviewPage /></Route>
-    <Route path="/admin/expenses"><AdminOverviewPage /></Route>
+    <Route path="/admin/services"><AdminContentResourcePage section="services" /></Route>
+    <Route path="/admin/products"><AdminContentResourcePage section="products" /></Route>
+    <Route path="/admin/case-studies"><AdminContentResourcePage section="case-studies" /></Route>
+    <Route path="/admin/invoices"><AdminResourcePage section="invoices" /></Route>
+    <Route path="/admin/payments"><AdminResourcePage section="payments" /></Route>
+    <Route path="/admin/expenses"><AdminResourcePage section="expenses" /></Route>
     <Route path="/admin/finance"><AdminOverviewPage /></Route>
-    <Route path="/admin/support"><AdminRequestsPage /></Route>
-    <Route path="/admin/messages"><AdminRequestsPage /></Route>
-    <Route path="/admin/notifications"><AdminOverviewPage /></Route>
-    <Route path="/admin/blog"><AdminDataPage section="content" /></Route>
-    <Route path="/admin/testimonials"><AdminDataPage section="content" /></Route>
-    <Route path="/admin/faq"><AdminDataPage section="content" /></Route>
-    <Route path="/admin/team"><AdminDataPage section="customers" /></Route>
-    <Route path="/admin/analytics"><AdminOverviewPage /></Route>
-    <Route path="/admin/audit-logs"><AdminOverviewPage /></Route>
-    <Route path="/admin/settings"><AdminDataPage section="content" /></Route>
+    <Route path="/admin/support"><AdminResourcePage section="support" /></Route>
+    <Route path="/admin/messages"><AdminResourcePage section="messages" /></Route>
+    <Route path="/admin/notifications"><AdminResourcePage section="notifications" /></Route>
+    <Route path="/admin/blog"><AdminContentResourcePage section="blog" /></Route>
+    <Route path="/admin/testimonials"><AdminContentResourcePage section="testimonials" /></Route>
+    <Route path="/admin/faq"><AdminContentResourcePage section="faq" /></Route>
+    <Route path="/admin/team"><AdminResourcePage section="team" /></Route>
+    <Route path="/admin/analytics"><AdminResourcePage section="analytics" /></Route>
+    <Route path="/admin/audit-logs"><AdminResourcePage section="audit-logs" /></Route>
+    <Route path="/admin/settings"><AdminResourcePage section="settings" /></Route>
     <Route path="/404" component={NotFound} />
     <Route component={NotFound} />
   </Switch>;

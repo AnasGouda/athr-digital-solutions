@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, sum } from "drizzle-orm";
+import { and, count, desc, eq, inArray, ne, sum } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -163,12 +163,14 @@ export async function getCustomerPortal(userId: number) {
     db.select().from(supportTickets).where(eq(supportTickets.customerId, userId)).orderBy(desc(supportTickets.updatedAt)),
     db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt)).limit(12),
   ]);
+  const ticketIds = tickets.map(ticket => ticket.id);
+  const customerMessages = ticketIds.length ? await db.select().from(ticketMessages).where(inArray(ticketMessages.ticketId, ticketIds)).orderBy(desc(ticketMessages.createdAt)) : [];
   const [tasks, projectMilestones, customerFiles] = await Promise.all([
     projectIds.length ? db.select().from(projectTasks).where(inArray(projectTasks.projectId, projectIds)) : Promise.resolve([]),
     projectIds.length ? db.select().from(milestones).where(inArray(milestones.projectId, projectIds)) : Promise.resolve([]),
     db.select().from(files).where(eq(files.customerId, userId)),
   ]);
-  return { projects: customerProjects, invoices: customerInvoices, payments: customerPayments, tickets, notifications: customerNotifications, tasks, milestones: projectMilestones, files: customerFiles };
+  return { projects: customerProjects, invoices: customerInvoices, payments: customerPayments, tickets, notifications: customerNotifications, messages: customerMessages, tasks, milestones: projectMilestones, files: customerFiles };
 }
 
 export async function getAdminOverview() {
@@ -205,6 +207,24 @@ export async function getAdminProjects() {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(projects).orderBy(desc(projects.updatedAt)).limit(100);
+}
+
+export async function getAdminResourceData() {
+  const db = await getDb();
+  if (!db) return { tasks: [], invoices: [], payments: [], expenses: [], messages: [], notifications: [], auditLogs: [], team: [], settings: [], support: [] };
+  const [taskRows, invoiceRows, paymentRows, expenseRows, messageRows, notificationRows, auditRows, teamRows, settingRows, supportRows] = await Promise.all([
+    db.select().from(projectTasks).orderBy(desc(projectTasks.updatedAt)).limit(100),
+    db.select().from(invoices).orderBy(desc(invoices.createdAt)).limit(100),
+    db.select().from(payments).orderBy(desc(payments.createdAt)).limit(100),
+    db.select().from(expenses).orderBy(desc(expenses.spentAt)).limit(100),
+    db.select().from(contactMessages).orderBy(desc(contactMessages.createdAt)).limit(100),
+    db.select().from(notifications).orderBy(desc(notifications.createdAt)).limit(100),
+    db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(100),
+    db.select().from(users).where(ne(users.accessRole, "CUSTOMER")).orderBy(desc(users.createdAt)).limit(100),
+    db.select().from(siteSettings).orderBy(siteSettings.key),
+    db.select().from(supportTickets).orderBy(desc(supportTickets.updatedAt)).limit(100),
+  ]);
+  return { tasks: taskRows, invoices: invoiceRows, payments: paymentRows, expenses: expenseRows, messages: messageRows, notifications: notificationRows, auditLogs: auditRows, team: teamRows, settings: settingRows, support: supportRows };
 }
 
 export async function updateProjectRequestStatus(id: number, status: "NEW" | "REVIEWING" | "IN_PROGRESS" | "COMPLETED" | "ARCHIVED") {
