@@ -49,4 +49,9 @@ describe("ATHR platform authorization", () => {
       attachments: [],
     })).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
+
+  it("rejects empty chatbot turns before invoking the model", async () => {
+    const caller = appRouter.createCaller(context());
+    await expect(caller.ai.chat({ messages: [{ role: "user", content: "" }] })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
 });

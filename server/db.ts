@@ -1,4 +1,4 @@
-import { and, count, desc, eq, sum } from "drizzle-orm";
+import { and, count, desc, eq, inArray, sum } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -163,19 +163,11 @@ export async function getCustomerPortal(userId: number) {
     db.select().from(supportTickets).where(eq(supportTickets.customerId, userId)).orderBy(desc(supportTickets.updatedAt)),
     db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt)).limit(12),
   ]);
-  let tasks: typeof projectTasks.$inferSelect[] = [];
-  let projectMilestones: typeof milestones.$inferSelect[] = [];
-  let customerFiles: typeof files.$inferSelect[] = [];
-  if (projectIds.length) {
-    const [taskRows, milestoneRows, fileRows] = await Promise.all([
-      db.select().from(projectTasks).where(eq(projectTasks.projectId, projectIds[0])),
-      db.select().from(milestones).where(eq(milestones.projectId, projectIds[0])),
-      db.select().from(files).where(eq(files.customerId, userId)),
-    ]);
-    tasks = taskRows;
-    projectMilestones = milestoneRows;
-    customerFiles = fileRows;
-  }
+  const [tasks, projectMilestones, customerFiles] = await Promise.all([
+    projectIds.length ? db.select().from(projectTasks).where(inArray(projectTasks.projectId, projectIds)) : Promise.resolve([]),
+    projectIds.length ? db.select().from(milestones).where(inArray(milestones.projectId, projectIds)) : Promise.resolve([]),
+    db.select().from(files).where(eq(files.customerId, userId)),
+  ]);
   return { projects: customerProjects, invoices: customerInvoices, payments: customerPayments, tickets, notifications: customerNotifications, tasks, milestones: projectMilestones, files: customerFiles };
 }
 

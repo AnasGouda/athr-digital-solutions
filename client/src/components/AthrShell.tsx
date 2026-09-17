@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ArrowUpLeft, Globe2, Menu, X, LogIn, Sparkles } from "lucide-react";
 import { startLogin } from "@/const";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { AthrChatbot } from "@/components/AthrChatbot";
 
 const nav = [
   ["/", "الرئيسية", "Home"],
@@ -55,6 +56,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
     </header>
     <main>{children}</main>
     <Footer />
+    <AthrChatbot />
   </div>;
 }
 
