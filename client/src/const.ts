@@ -15,15 +15,15 @@ export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 type AuthAction = "signIn" | "signUp" | "forgotPassword";
 
 export const startAuth = (action: AuthAction = "signIn", provider?: "google") => {
-  const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
-  const appId = import.meta.env.VITE_APP_ID;
+  const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL || "https://manus.im";
+  const appId = import.meta.env.VITE_APP_ID || "98aFFmVP6zqvStmhaMirUf";
   const redirectUri = `${window.location.origin}/api/oauth/callback`;
 
   const nonce = crypto.randomUUID();
   document.cookie = `${OAUTH_STATE_COOKIE}=${nonce}; Path=/; Max-Age=600; SameSite=None; Secure`;
   const state = encodeOAuthState({ redirectUri, nonce });
 
-  const url = new URL(`${oauthPortalUrl}/app-auth`);
+  const url = new URL("/app-auth", oauthPortalUrl);
   url.searchParams.set("appId", appId);
   url.searchParams.set("redirectUri", redirectUri);
   url.searchParams.set("state", state);
