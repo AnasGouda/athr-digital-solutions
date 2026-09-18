@@ -76,4 +76,14 @@ describe("ATHR platform authorization", () => {
     const caller = appRouter.createCaller(context(finance));
     await expect(caller.admin.deleteBlogPost({ id: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
+
+  it("does not expose diagnostics to customers", async () => {
+    const caller = appRouter.createCaller(context(customer));
+    await expect(caller.admin.diagnostics()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("keeps local demo login disabled unless explicitly enabled", async () => {
+    const caller = appRouter.createCaller(context());
+    await expect(caller.auth.demoLogin()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
 });

@@ -1,9 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { COOKIE_NAME } from "@shared/const";
+import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { ENV } from "./_core/env";
+import { sdk } from "./_core/sdk";
 import { invokeLLM } from "./_core/llm";
 import {
   addTicketMessage,
@@ -96,10 +98,23 @@ const withPermission = (required: Permission) => adminOnly.use(({ ctx, next }) =
   return next({ ctx });
 });
 
+const getEnvironmentDiagnostics = () => {
+  const checks = [
+    ["DATABASE_URL", "Database connection"], ["JWT_SECRET", "Session signing"], ["VITE_APP_ID", "OAuth application"], ["OAUTH_SERVER_URL", "OAuth server"], ["VITE_OAUTH_PORTAL_URL", "OAuth portal"], ["RESEND_API_KEY", "Resend API"], ["EMAIL_FROM", "Email sender"], ["SMTP_HOST", "SMTP host"], ["SMTP_PORT", "SMTP port"], ["SMTP_USER", "SMTP user"], ["SMTP_PASSWORD", "SMTP password"], ["BUILT_IN_FORGE_API_URL", "Built-in API"],
+  ] as const;
+  return { localDemoLoginEnabled: ENV.localDemoLoginEnabled, checks: checks.map(([key, label]) => ({ key, label, configured: Boolean(process.env[key]) })) };
+};
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
+    demoLogin: publicProcedure.mutation(async ({ ctx }) => {
+      if (!ENV.localDemoLoginEnabled) throw new TRPCError({ code: "FORBIDDEN", message: "Local demo login is disabled." });
+      const token = await sdk.createSessionToken("local-demo-user", { name: "Local Demo Admin", expiresInMs: ONE_YEAR_MS });
+      ctx.res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(ctx.req), maxAge: ONE_YEAR_MS });
+      return { success: true } as const;
+    }),
     updateProfile: protectedProcedure.input(z.object({ name: z.string().min(2).max(160).optional(), phone: z.string().max(32).nullable().optional(), company: z.string().max(160).nullable().optional(), avatarData: z.string().max(7_000_000).optional(), avatarMimeType: z.enum(["image/jpeg", "image/png", "image/webp"]).optional() })).mutation(async ({ ctx, input }) => {
       const user = await updateUserProfile(ctx.user.id, input);
       return { success: true, user };
@@ -174,6 +189,7 @@ export const appRouter = router({
     resources: withPermission("view").query(() => getAdminResourceData()),
     content: withPermission("view").query(() => getPublicContent()),
     financialReport: withPermission("manage_finance").query(() => getFinancialReportData()),
+    diagnostics: withPermission("manage_settings").query(() => getEnvironmentDiagnostics()),
     createProject: withPermission("manage_projects").input(projectAdminSchema).mutation(({ ctx, input }) => createAdminProject({ ...input, startDate: input.startDate ? new Date(input.startDate) : null, deadline: input.deadline ? new Date(input.deadline) : null }, ctx.user.id)),
     updateProject: withPermission("manage_projects").input(z.object({ id: z.number().int().positive(), values: projectAdminSchema.partial() })).mutation(({ ctx, input }) => updateAdminProject(input.id, { ...input.values, startDate: input.values.startDate === undefined ? undefined : input.values.startDate ? new Date(input.values.startDate) : null, deadline: input.values.deadline === undefined ? undefined : input.values.deadline ? new Date(input.values.deadline) : null }, ctx.user.id)),
     updateCustomer: withPermission("manage_users").input(customerAdminSchema).mutation(({ ctx, input }) => updateCustomer(input.id, input, ctx.user.id)),

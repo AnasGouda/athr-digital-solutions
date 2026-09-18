@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import AdminFinancePage from "./pages/AdminFinancePage";
 import { AdminBlogCrudPage, AdminCustomersCrudPage, AdminProjectsCrudPage, AdminReportsPage } from "./pages/AdminManagementPages";
 import AccountSettingsPage from "./pages/AccountSettingsPage";
+import AdminDiagnosticsPage from "./pages/AdminDiagnosticsPage";
 
 function Router() {
   return <Switch>
@@ -76,6 +77,7 @@ function Router() {
     <Route path="/admin/files"><AdminResourcePage section="settings" /></Route>
     <Route path="/admin/audit-logs"><AdminResourcePage section="audit-logs" /></Route>
     <Route path="/admin/settings"><AdminResourcePage section="settings" /></Route>
+    <Route path="/admin/diagnostics" component={AdminDiagnosticsPage} />
     <Route path="/404" component={NotFound} />
     <Route component={NotFound} />
   </Switch>;

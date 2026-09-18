@@ -18,7 +18,7 @@ pnpm install
 Copy-Item .env.example .env
 ```
 
-Fill `.env` with the project values supplied by the Manus project environment. Never commit `.env` or paste secrets into frontend code.
+Use `ENV_TEMPLATE.txt` as the variable checklist, then create a local `.env` file and fill it with the project values supplied by the Manus project environment. Never commit `.env` or paste secrets into frontend code.
 
 ```env
 DATABASE_URL=mysql://...
@@ -40,6 +40,9 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=...
 SMTP_PASSWORD=...
+
+# Local development only; never enable this in production
+LOCAL_DEMO_LOGIN_ENABLED=true
 ```
 
 The welcome email uses **Resend first** when `RESEND_API_KEY` and `EMAIL_FROM`/`RESEND_FROM` are present. If Resend is not configured, it falls back to the SMTP values. If neither is configured, account creation still works and the user receives the in-app welcome notification.
@@ -51,6 +54,8 @@ pnpm dev
 ```
 
 Open `http://localhost:3000`. The Windows-safe scripts use `cross-env`, so no Bash-specific `NODE_ENV=...` syntax is required.
+
+When `LOCAL_DEMO_LOGIN_ENABLED=true` and the app runs in development mode, the auth screen shows **Local demo admin**. It creates a signed local `SUPER_ADMIN` session without OAuth so the dashboard can be tested offline. This path is disabled automatically in production.
 
 ## Validate and build
 
@@ -67,5 +72,7 @@ pnpm start
 2. Complete OAuth authentication.
 3. Open `/admin` after login.
 4. The sidebar is filtered by role: `SUPER_ADMIN/ADMIN`, `MANAGER`, `EDITOR`, `FINANCE`, and `SUPPORT` each receive only their permitted sections.
+
+Open `/admin/diagnostics` to see which environment variables are configured. The page reports only **Configured/Missing** and never returns secret values.
 
 The backend enforces the same permissions; hiding a navigation item is not the security boundary.
