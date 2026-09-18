@@ -12,7 +12,7 @@ export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 // call would desync it from an in-flight login and the callback would reject it
 // with "invalid oauth state". It returns void by design, so there is no URL to
 // stash across renders.
-type AuthAction = "signIn" | "signUp";
+type AuthAction = "signIn" | "signUp" | "forgotPassword";
 
 export const startAuth = (action: AuthAction = "signIn", provider?: "google") => {
   const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
@@ -36,3 +36,4 @@ export const startAuth = (action: AuthAction = "signIn", provider?: "google") =>
 export const startLogin = () => startAuth("signIn");
 export const startSignup = () => startAuth("signUp");
 export const startGoogleLogin = () => startAuth("signIn", "google");
+export const startPasswordRecovery = () => startAuth("forgotPassword");

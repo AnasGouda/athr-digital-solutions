@@ -27,6 +27,7 @@ import {
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import { sendWelcomeEmail } from "./email";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let seedPromise: Promise<void> | null = null;
@@ -47,6 +48,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) throw new Error("User openId is required for upsert");
   const db = await getDb();
   if (!db) return;
+  const existing = await db.select({ id: users.id }).from(users).where(eq(users.openId, user.openId)).limit(1);
   const values: InsertUser = { openId: user.openId };
   const updateSet: Record<string, unknown> = {};
   const textFields = ["name", "email", "loginMethod", "avatarUrl", "phone", "company"] as const;
@@ -72,12 +74,48 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   if (!values.lastSignedIn) values.lastSignedIn = new Date();
   if (!Object.keys(updateSet).length) updateSet.lastSignedIn = new Date();
   await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+  if (!existing.length) {
+    const created = await db.select({ id: users.id }).from(users).where(eq(users.openId, user.openId)).limit(1);
+    if (created[0]) {
+      await db.insert(notifications).values({ userId: created[0].id, type: "WELCOME", title: "Welcome to ATHR", body: "Your account is ready. Explore your workspace, projects, files, and support messages.", read: false });
+      if (user.email) {
+        try { await sendWelcomeEmail({ to: user.email, name: user.name }); }
+        catch (error) { console.warn("[Email] Welcome email delivery failed:", error instanceof Error ? error.message : error); }
+      }
+    }
+  }
 }
 
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
   if (!db) return undefined;
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  return result[0];
+}
+
+export async function updateUserProfile(userId: number, input: { name?: string; phone?: string | null; company?: string | null; avatarData?: string; avatarMimeType?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const values: Partial<typeof users.$inferInsert> = {};
+  if (input.name !== undefined) values.name = input.name;
+  if (input.phone !== undefined) values.phone = input.phone;
+  if (input.company !== undefined) values.company = input.company;
+  if (input.avatarData && input.avatarMimeType) {
+    const extension = input.avatarMimeType.split("/")[1] || "jpg";
+    const buffer = Buffer.from(input.avatarData.replace(/^data:[^;]+;base64,/, ""), "base64");
+    if (buffer.length > 5_000_000) throw new Error("Avatar must be smaller than 5 MB");
+    const uploaded = await storagePut(`avatars/${userId}-${Date.now()}.${extension}`, buffer, input.avatarMimeType);
+    values.avatarUrl = uploaded.url;
+  }
+  if (!Object.keys(values).length) return getUserById(userId);
+  await db.update(users).set(values).where(eq(users.id, userId));
+  return getUserById(userId);
+}
+
+export async function getUserById(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   return result[0];
 }
 

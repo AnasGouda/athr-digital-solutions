@@ -27,6 +27,7 @@ const customer = {
   lastSignedIn: new Date(),
 };
 const admin = { ...customer, id: 1, role: "admin" as const, accessRole: "ADMIN" as const };
+const finance = { ...customer, id: 43, accessRole: "FINANCE" as const };
 
 describe("ATHR platform authorization", () => {
   it("rejects customer access to admin metrics on the backend", async () => {
@@ -69,5 +70,10 @@ describe("ATHR platform authorization", () => {
   it("validates receipt file types before storage access", async () => {
     const caller = appRouter.createCaller(context(admin));
     await expect(caller.admin.uploadReceipt({ entity: "expense", id: 1, fileName: "receipt.pdf", mimeType: "application/pdf", data: "too-short" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("blocks finance roles from content mutations", async () => {
+    const caller = appRouter.createCaller(context(finance));
+    await expect(caller.admin.deleteBlogPost({ id: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

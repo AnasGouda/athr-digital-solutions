@@ -10,6 +10,7 @@ import { AdminContentResourcePage, AdminDataPage, AdminOverviewPage, AdminReques
 import NotFound from "./pages/NotFound";
 import AdminFinancePage from "./pages/AdminFinancePage";
 import { AdminBlogCrudPage, AdminCustomersCrudPage, AdminProjectsCrudPage, AdminReportsPage } from "./pages/AdminManagementPages";
+import AccountSettingsPage from "./pages/AccountSettingsPage";
 
 function Router() {
   return <Switch>
@@ -32,7 +33,7 @@ function Router() {
     <Route path="/terms"><LegalPage kind="terms" /></Route>
     <Route path="/login" component={AuthLandingPage} />
     <Route path="/register" component={AuthLandingPage} />
-    <Route path="/forgot-password" component={AuthLandingPage} />
+    <Route path="/forgot-password">{() => <AuthLandingPage recovery />}</Route>
     <Route path="/reset-password" component={AuthLandingPage} />
     <Route path="/portal" component={PortalPage} />
     <Route path="/portal/projects" component={PortalProjectsPage} />
@@ -44,8 +45,8 @@ function Router() {
     <Route path="/portal/support"><PortalListPage section="support" /></Route>
     <Route path="/portal/messages"><PortalListPage section="messages" /></Route>
     <Route path="/portal/notifications"><PortalListPage section="notifications" /></Route>
-    <Route path="/portal/profile"><PortalProfilePage /></Route>
-    <Route path="/portal/settings"><PortalProfilePage settings /></Route>
+    <Route path="/portal/profile" component={AccountSettingsPage} />
+    <Route path="/portal/settings" component={AccountSettingsPage} />
     <Route path="/admin" component={AdminOverviewPage} />
     <Route path="/admin/requests" component={AdminRequestsPage} />
     <Route path="/admin/projects" component={AdminProjectsCrudPage} />

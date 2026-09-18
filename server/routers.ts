@@ -26,6 +26,7 @@ import {
   getPublicContent,
   getPublicProduct,
   getPublicService,
+  updateUserProfile,
   updateProjectRequestStatus,
   updateAdminProject,
   updateBlogPost,
@@ -80,10 +81,29 @@ const adminOnly = protectedProcedure.use(({ ctx, next }) => {
   return next({ ctx });
 });
 
+const ROLE_PERMISSIONS = {
+  SUPER_ADMIN: ["view", "manage_users", "manage_projects", "manage_content", "manage_finance", "manage_support", "manage_settings"],
+  ADMIN: ["view", "manage_users", "manage_projects", "manage_content", "manage_finance", "manage_support", "manage_settings"],
+  MANAGER: ["view", "manage_projects", "manage_support"],
+  EDITOR: ["view", "manage_content"],
+  FINANCE: ["view", "manage_finance"],
+  SUPPORT: ["view", "manage_support"],
+} as const;
+type Permission = typeof ROLE_PERMISSIONS[keyof typeof ROLE_PERMISSIONS][number];
+const withPermission = (required: Permission) => adminOnly.use(({ ctx, next }) => {
+  const permissions: readonly string[] = ROLE_PERMISSIONS[(ctx.user.accessRole || "CUSTOMER") as keyof typeof ROLE_PERMISSIONS] ?? [];
+  if (!permissions.includes(required)) throw new TRPCError({ code: "FORBIDDEN", message: "لا تملك صلاحية تنفيذ هذا الإجراء." });
+  return next({ ctx });
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
+    updateProfile: protectedProcedure.input(z.object({ name: z.string().min(2).max(160).optional(), phone: z.string().max(32).nullable().optional(), company: z.string().max(160).nullable().optional(), avatarData: z.string().max(7_000_000).optional(), avatarMimeType: z.enum(["image/jpeg", "image/png", "image/webp"]).optional() })).mutation(async ({ ctx, input }) => {
+      const user = await updateUserProfile(ctx.user.id, input);
+      return { success: true, user };
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -147,23 +167,23 @@ export const appRouter = router({
     }),
   }),
   admin: router({
-    overview: adminOnly.query(() => getAdminOverview()),
-    requests: adminOnly.query(() => getAdminRequests()),
-    customers: adminOnly.query(() => getAdminCustomers()),
-    projects: adminOnly.query(() => getAdminProjects()),
-    resources: adminOnly.query(() => getAdminResourceData()),
-    content: adminOnly.query(() => getPublicContent()),
-    financialReport: adminOnly.query(() => getFinancialReportData()),
-    createProject: adminOnly.input(projectAdminSchema).mutation(({ ctx, input }) => createAdminProject({ ...input, startDate: input.startDate ? new Date(input.startDate) : null, deadline: input.deadline ? new Date(input.deadline) : null }, ctx.user.id)),
-    updateProject: adminOnly.input(z.object({ id: z.number().int().positive(), values: projectAdminSchema.partial() })).mutation(({ ctx, input }) => updateAdminProject(input.id, { ...input.values, startDate: input.values.startDate === undefined ? undefined : input.values.startDate ? new Date(input.values.startDate) : null, deadline: input.values.deadline === undefined ? undefined : input.values.deadline ? new Date(input.values.deadline) : null }, ctx.user.id)),
-    updateCustomer: adminOnly.input(customerAdminSchema).mutation(({ ctx, input }) => updateCustomer(input.id, input, ctx.user.id)),
-    createCustomer: adminOnly.input(z.object({ name: z.string().min(2).max(160), email: z.string().email(), phone: z.string().max(32).optional(), company: z.string().max(160).optional() })).mutation(({ ctx, input }) => createCustomer(input, ctx.user.id)),
-    archiveCustomer: adminOnly.input(z.object({ id: z.number().int().positive() })).mutation(({ ctx, input }) => archiveCustomer(input.id, ctx.user.id)),
-    createBlogPost: adminOnly.input(blogAdminSchema).mutation(({ ctx, input }) => createBlogPost({ ...input, publishedAt: input.publishedAt ? new Date(input.publishedAt) : new Date() }, ctx.user.id)),
-    updateBlogPost: adminOnly.input(z.object({ id: z.number().int().positive(), values: blogAdminSchema.partial() })).mutation(({ ctx, input }) => updateBlogPost(input.id, { ...input.values, publishedAt: input.values.publishedAt === undefined ? undefined : new Date(input.values.publishedAt) }, ctx.user.id)),
-    deleteBlogPost: adminOnly.input(z.object({ id: z.number().int().positive() })).mutation(({ ctx, input }) => deleteBlogPost(input.id, ctx.user.id)),
-    uploadReceipt: adminOnly.input(receiptSchema).mutation(({ ctx, input }) => uploadReceipt({ ...input, actorId: ctx.user.id })),
-    updateRequestStatus: adminOnly.input(z.object({ id: z.number().int().positive(), status: z.enum(["NEW", "REVIEWING", "IN_PROGRESS", "COMPLETED", "ARCHIVED"]) })).mutation(({ input }) => updateProjectRequestStatus(input.id, input.status)),
+    overview: withPermission("view").query(() => getAdminOverview()),
+    requests: withPermission("view").query(() => getAdminRequests()),
+    customers: withPermission("view").query(() => getAdminCustomers()),
+    projects: withPermission("view").query(() => getAdminProjects()),
+    resources: withPermission("view").query(() => getAdminResourceData()),
+    content: withPermission("view").query(() => getPublicContent()),
+    financialReport: withPermission("manage_finance").query(() => getFinancialReportData()),
+    createProject: withPermission("manage_projects").input(projectAdminSchema).mutation(({ ctx, input }) => createAdminProject({ ...input, startDate: input.startDate ? new Date(input.startDate) : null, deadline: input.deadline ? new Date(input.deadline) : null }, ctx.user.id)),
+    updateProject: withPermission("manage_projects").input(z.object({ id: z.number().int().positive(), values: projectAdminSchema.partial() })).mutation(({ ctx, input }) => updateAdminProject(input.id, { ...input.values, startDate: input.values.startDate === undefined ? undefined : input.values.startDate ? new Date(input.values.startDate) : null, deadline: input.values.deadline === undefined ? undefined : input.values.deadline ? new Date(input.values.deadline) : null }, ctx.user.id)),
+    updateCustomer: withPermission("manage_users").input(customerAdminSchema).mutation(({ ctx, input }) => updateCustomer(input.id, input, ctx.user.id)),
+    createCustomer: withPermission("manage_users").input(z.object({ name: z.string().min(2).max(160), email: z.string().email(), phone: z.string().max(32).optional(), company: z.string().max(160).optional() })).mutation(({ ctx, input }) => createCustomer(input, ctx.user.id)),
+    archiveCustomer: withPermission("manage_users").input(z.object({ id: z.number().int().positive() })).mutation(({ ctx, input }) => archiveCustomer(input.id, ctx.user.id)),
+    createBlogPost: withPermission("manage_content").input(blogAdminSchema).mutation(({ ctx, input }) => createBlogPost({ ...input, publishedAt: input.publishedAt ? new Date(input.publishedAt) : new Date() }, ctx.user.id)),
+    updateBlogPost: withPermission("manage_content").input(z.object({ id: z.number().int().positive(), values: blogAdminSchema.partial() })).mutation(({ ctx, input }) => updateBlogPost(input.id, { ...input.values, publishedAt: input.values.publishedAt === undefined ? undefined : new Date(input.values.publishedAt) }, ctx.user.id)),
+    deleteBlogPost: withPermission("manage_content").input(z.object({ id: z.number().int().positive() })).mutation(({ ctx, input }) => deleteBlogPost(input.id, ctx.user.id)),
+    uploadReceipt: withPermission("manage_finance").input(receiptSchema).mutation(({ ctx, input }) => uploadReceipt({ ...input, actorId: ctx.user.id })),
+    updateRequestStatus: withPermission("manage_projects").input(z.object({ id: z.number().int().positive(), status: z.enum(["NEW", "REVIEWING", "IN_PROGRESS", "COMPLETED", "ARCHIVED"]) })).mutation(({ input }) => updateProjectRequestStatus(input.id, input.status)),
   }),
 });
 
